@@ -155,6 +155,9 @@ function App() {
         <Pair name="long" source={LONG_PARAGRAPH} />
         <Pair name="short" source={SHORT_PARAGRAPH} />
         <Pair name="blocks" source={SHORT_BLOCKS} />
+        {/* Above the tables: their rows have fractional heights, and a bullet painted at a fractional
+            position antialiases differently, which would pass for a fourth line that differs. */}
+        <Pair name="rich" source={RICH_BODY} style={{ lineHeight: 1.5 }} />
         <Pair name="short-table" source={SHORT_TABLE} />
         <Pair name="mixed" source={MIXED_BODY} />
         <Pair name="table" source={TABLE_BODY} />
@@ -163,7 +166,6 @@ function App() {
         <Pair name="four-then-table" source={`${HARD_LINES(4)}\n\n${TABLE_BODY}`} />
         <Pair name="three-then-table" source={`${HARD_LINES(3)}\n\n${TABLE_BODY}`} />
         <Pair name="four-blocks" source={"One.\n\nTwo.\n\nThree.\n\nFour."} />
-        <Pair name="rich" source={RICH_BODY} style={{ lineHeight: 1.5 }} />
         <Rendering name="bold" source="**The same words**" />
         <Rendering name="regular" source="The same words" />
         <Rendering
