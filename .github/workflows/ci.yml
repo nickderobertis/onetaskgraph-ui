@@ -61,30 +61,6 @@ jobs:
         uses: nickderobertis/notignored@v0
       - uses: extractions/setup-just@v2
       - uses: oven-sh/setup-bun@v2
-      - name: Decide cache trust and configure the sidecar
-        id: nx-cache-trust
-        shell: bash
-        run: |
-          node scripts/nx-remote-cache.mjs trust
-          token="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')"
-          echo "::add-mask::$token"
-          echo "token=$token" >> "$GITHUB_OUTPUT"
-      - uses: op-nx/github-cache/start-cache-server@91839c24885842cac86567c30e23b37fb85f7e33
-        id: nx-cache
-        background: true
-        with:
-          port: '3000'
-        env:
-          NX_SELF_HOSTED_REMOTE_CACHE_SERVER: http://127.0.0.1:3000
-          NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN: ${{ steps.nx-cache-trust.outputs.token }}
-          CACHE_READ_ONLY: ${{ steps.nx-cache-trust.outputs.read_only == 'true' && '1' || '' }}
-          GITHUB_TOKEN: ${{ github.token }}
-      - name: Wait for the cache recording proxy
-        shell: bash
-        env:
-          NX_SELF_HOSTED_REMOTE_CACHE_SERVER: http://127.0.0.1:3000
-          NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN: ${{ steps.nx-cache-trust.outputs.token }}
-        run: node scripts/nx-remote-cache.mjs ready
       # shellcheck and actionlint run through uvx.
       - uses: astral-sh/setup-uv@v8
       - name: Bootstrap
@@ -114,18 +90,6 @@ jobs:
           fi
           just lint-llm-diff origin/main
 
-      - name: Report cache entries and task executions
-        if: always()
-        shell: bash
-        run: node scripts/nx-remote-cache.mjs report --job "$GITHUB_JOB" --out "$RUNNER_TEMP/nx-cache-report"
-      - uses: actions/upload-artifact@v4
-        if: always() && steps.nx-cache-trust.outputs.promotable == 'true'
-        with:
-          name: nx-cache-entries-${{ github.job }}
-          path: ${{ runner.temp }}/nx-cache-report
-          retention-days: 7
-      - cancel: nx-cache
-
   # The tests, coverage, budgets and e2e journeys of the affected projects on Linux.
   test-linux:
     if: github.event_name == 'pull_request'
@@ -138,48 +102,12 @@ jobs:
           persist-credentials: false
       - uses: extractions/setup-just@v2
       - uses: oven-sh/setup-bun@v2
-      - name: Decide cache trust and configure the sidecar
-        id: nx-cache-trust
-        shell: bash
-        run: |
-          node scripts/nx-remote-cache.mjs trust
-          token="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')"
-          echo "::add-mask::$token"
-          echo "token=$token" >> "$GITHUB_OUTPUT"
-      - uses: op-nx/github-cache/start-cache-server@91839c24885842cac86567c30e23b37fb85f7e33
-        id: nx-cache
-        background: true
-        with:
-          port: '3000'
-        env:
-          NX_SELF_HOSTED_REMOTE_CACHE_SERVER: http://127.0.0.1:3000
-          NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN: ${{ steps.nx-cache-trust.outputs.token }}
-          CACHE_READ_ONLY: ${{ steps.nx-cache-trust.outputs.read_only == 'true' && '1' || '' }}
-          GITHUB_TOKEN: ${{ github.token }}
-      - name: Wait for the cache recording proxy
-        shell: bash
-        env:
-          NX_SELF_HOSTED_REMOTE_CACHE_SERVER: http://127.0.0.1:3000
-          NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN: ${{ steps.nx-cache-trust.outputs.token }}
-        run: node scripts/nx-remote-cache.mjs ready
       - name: Bootstrap
         shell: bash
         run: just bootstrap
       - name: Test the affected projects
         shell: bash
         run: just ci-test
-
-      - name: Report cache entries and task executions
-        if: always()
-        shell: bash
-        run: node scripts/nx-remote-cache.mjs report --job "$GITHUB_JOB" --out "$RUNNER_TEMP/nx-cache-report"
-      - uses: actions/upload-artifact@v4
-        if: always() && steps.nx-cache-trust.outputs.promotable == 'true'
-        with:
-          name: nx-cache-entries-${{ github.job }}
-          path: ${{ runner.temp }}/nx-cache-report
-          retention-days: 7
-      - cancel: nx-cache
 
   # The full history lets local git prove each saved base commit's ancestry, and the group
   # serializes comment writers.
