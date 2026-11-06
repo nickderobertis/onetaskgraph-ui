@@ -49,7 +49,7 @@ bootstrap:
 # check` then prints the one command that will actually run, and a mistyped tier
 # aborts instead of quietly buying the weaker tier.
 check tier="affected": && (test-e2e tier) (budgets tier)
-    {{ if tier == "all" { "bunx nx run-many" } else if tier == "affected" { "bunx nx affected --base=" + base } else { error("unknown tier '" + tier + "' — use 'affected' (the default) or 'all'") } }} -t lint typecheck dependency-boundary test build
+    {{ if tier == "all" { "bunx nx run-many" } else if tier == "affected" { "bunx nx affected --base=" + base } else { error("unknown tier '" + tier + "' — use 'affected' (the default) or 'all'") } }} -t lint typecheck dependency-boundary test build --outputStyle=static
 
 # The full local gate, timed: the everyday gate plus the supply chain, run inside
 # scripts/gate-time.sh, which records its wall clock to .gate-time.json and then checks
@@ -72,7 +72,7 @@ supply-chain:
 # per-project budgets of the projects this change can reach. Formatting, linting and the
 # supply chain run once, in the `lint` job, not again per platform.
 ci-test:
-    bunx nx affected --base={{base}} -t test build e2e budgets budgets-host
+    bunx nx affected --base={{base}} -t test build e2e budgets budgets-host --outputStyle=static
 
 # Compute the version from the commits on main, tag it and publish it, as
 # .github/workflows/release.yml does on every push to main (.releaserc.json).
@@ -98,7 +98,7 @@ publish-ui-dry-run: build-ui
 # target enforces coverage (95% line coverage is the default bar); lower the bar
 # only with a documented reason in AGENTS.md — never leave it unmeasured.
 test:
-    bunx nx affected --base={{base}} -t test
+    bunx nx affected --base={{base}} -t test --outputStyle=static
 
 # Run the end-to-end suites, which exercise the built artifact the way users run
 # it. `check` runs this last, so e2e is gated on every change; run it alone while
@@ -109,16 +109,16 @@ test:
 # If e2e genuinely does not apply (e.g. a pure library), delete this recipe, drop
 # it from `check`'s dependencies, and document why in AGENTS.md.
 test-e2e tier="affected":
-    {{ if tier == "all" { "bunx nx run-many" } else if tier == "affected" { "bunx nx affected --base=" + base } else { error("unknown tier '" + tier + "' — use 'affected' (the default) or 'all'") } }} -t e2e
+    {{ if tier == "all" { "bunx nx run-many" } else if tier == "affected" { "bunx nx affected --base=" + base } else { error("unknown tier '" + tier + "' — use 'affected' (the default) or 'all'") } }} -t e2e --outputStyle=static
 
 # Lint (and type check) the projects this change can reach; fail on findings.
 lint:
-    bunx nx affected --base={{base}} -t lint typecheck dependency-boundary
+    bunx nx affected --base={{base}} -t lint typecheck dependency-boundary --outputStyle=static
 
 # Format the whole tree in place — formatting is not a "what changed" question,
 # so this sweeps every project rather than the affected set.
 format:
-    bunx nx run-many -t format
+    bunx nx run-many -t format --outputStyle=static
 
 # Upgrade dependencies, then re-run the full gate as the broader tier: an upgrade
 # can reach any project, so the affected set would understate it.
@@ -183,5 +183,5 @@ lint-llm-diff base="origin/main" *args:
 # strictly, so it leaves out the `release-tail` budgets the release's `publish`
 # job reports and the `host-variable` one `just gate` checks as a warning.
 budgets tier="affected":
-    {{ if tier == "all" { "bunx nx run-many" } else if tier == "affected" { "bunx nx affected --base=" + base } else { error("unknown tier '" + tier + "' — use 'affected' (the default) or 'all'") } }} -t budgets budgets-host
+    {{ if tier == "all" { "bunx nx run-many" } else if tier == "affected" { "bunx nx affected --base=" + base } else { error("unknown tier '" + tier + "' — use 'affected' (the default) or 'all'") } }} -t budgets budgets-host --outputStyle=static
     [ ! -f budgets.yaml ] || bunx onebudgetspec check budgets.yaml --exclude-label release-tail --exclude-label host-variable
