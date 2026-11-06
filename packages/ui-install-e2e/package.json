@@ -2,5 +2,11 @@
   "name": "@onetaskgraph-ui/install-e2e",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "@fontsource/actor": "^5.3.0",
+    "@types/pngjs": "^6.0.5",
+    "playwright": "1.61.1",
+    "pngjs": "^7.0.0"
+  }
 }

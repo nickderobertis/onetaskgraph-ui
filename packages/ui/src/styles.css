@@ -1,3 +1,220 @@
-.otg-task {
-  font: inherit;
+/*
+ * Everything inherits the page's font and colour. A page themes these with custom properties:
+ *   --otg-accent  links
+ *   --otg-border  card, table and rule borders
+ *   --otg-muted   meta and secondary text
+ * Each is read with its default at the point of use, so setting it on any ancestor wins.
+ */
+
+.otg-markdown {
+  /* A page may set `font-synthesis: none`; bold must still show in a font with no bold face. */
+  font-synthesis-weight: auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.otg-markdown * {
+  margin-block: 0;
+}
+
+.otg-markdown > * + *,
+.otg-markdown li > * + *,
+.otg-markdown blockquote > * + * {
+  margin-block-start: 0.5em;
+}
+
+.otg-markdown strong {
+  font-weight: 700;
+}
+
+.otg-markdown h1,
+.otg-markdown h2,
+.otg-markdown h3,
+.otg-markdown h4,
+.otg-markdown h5,
+.otg-markdown h6 {
+  font-size: 1em;
+  font-weight: 700;
+}
+
+.otg-markdown h1 {
+  font-size: 1.25em;
+}
+
+.otg-markdown h2 {
+  font-size: 1.125em;
+}
+
+.otg-markdown ul,
+.otg-markdown ol {
+  padding-inline-start: 1.5em;
+}
+
+/* The checkbox is the item's marker. */
+.otg-markdown .task-list-item {
+  list-style: none;
+}
+
+.otg-markdown .task-list-item input {
+  margin-inline: -1.25em 0.25em;
+}
+
+.otg-markdown a[href],
+.otg-source-link[href] {
+  color: var(--otg-accent, #2563eb);
+  text-decoration: underline;
+}
+
+.otg-markdown blockquote {
+  border-inline-start: 0.2em solid
+    var(--otg-border, color-mix(in srgb, currentColor 20%, transparent));
+  color: var(--otg-muted, color-mix(in srgb, currentColor 65%, transparent));
+  margin-inline: 0;
+  padding-inline-start: 0.75em;
+}
+
+.otg-markdown hr {
+  border: 0;
+  border-block-start: 1px solid var(--otg-border, color-mix(in srgb, currentColor 20%, transparent));
+}
+
+.otg-markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.otg-markdown pre {
+  white-space: pre-wrap;
+}
+
+/* A table wider than its container scrolls inside it rather than leaving it. */
+.otg-markdown table {
+  border-collapse: collapse;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.otg-markdown th,
+.otg-markdown td {
+  border: 1px solid var(--otg-border, color-mix(in srgb, currentColor 20%, transparent));
+  padding: 0.25em 0.5em;
+  text-align: start;
+}
+
+.otg-markdown--clamped {
+  -webkit-box-orient: vertical;
+  display: -webkit-box;
+  overflow: hidden;
+}
+
+/*
+ * The line clamp counts only lines in the box's own flow, and a table starts another. Flattened
+ * into that flow its text counts, and ends in the ellipsis, like any other text.
+ */
+.otg-markdown--clamped table,
+.otg-markdown--clamped thead,
+.otg-markdown--clamped tbody,
+.otg-markdown--clamped tr,
+.otg-markdown--clamped th,
+.otg-markdown--clamped td {
+  border: 0;
+  display: inline;
+  padding: 0;
+}
+
+.otg-markdown--clamped th::after,
+.otg-markdown--clamped td::after {
+  content: " ";
+}
+
+.otg-markdown--clamped tr::after {
+  content: "· ";
+}
+
+/*
+ * The card is the query container and carries no padding or border of its own: a container query
+ * measures the content box, so the card's own width is what the 560px line below reads.
+ */
+.otg-card {
+  box-sizing: border-box;
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.otg-card__surface {
+  border: 1px solid var(--otg-border, color-mix(in srgb, currentColor 20%, transparent));
+  border-radius: 0.5em;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  padding: 0.75em 1em;
+}
+
+.otg-card__header {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.5em 0.75em;
+}
+
+.otg-card__badges,
+.otg-card__actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 0.25em 0.5em;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.otg-card__title {
+  flex: 1 1 0;
+  font-size: 1.0625em;
+  font-weight: 600;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.otg-card__meta,
+.otg-card__links {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.otg-card__meta {
+  color: var(--otg-muted, color-mix(in srgb, currentColor 65%, transparent));
+  font-size: 0.875em;
+}
+
+.otg-card__links {
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.875em;
+  gap: 0.25em 0.75em;
+}
+
+.otg-source-link {
+  overflow-wrap: anywhere;
+}
+
+@container (width < 560px) {
+  .otg-card__header {
+    flex-wrap: wrap;
+  }
+
+  /* Badges and title share a row while the title keeps room to read; it wraps below them if not. */
+  .otg-card__title {
+    flex-basis: 10ch;
+  }
+
+  .otg-card__badges {
+    flex-shrink: 1;
+  }
+
+  .otg-card__actions {
+    flex-basis: 100%;
+  }
 }

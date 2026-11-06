@@ -51,7 +51,7 @@ the choice was made deliberately rather than skipped.
 - **Product shape:** library
 - **Language(s):** typescript
 - **References composed:** base.md, project-graph.md, shapes/library.md, languages/typescript.md, ci.md, llmlint.md, releasing.md, tools/onebudgetspec.md
-- **Projects in the graph:** `ui` (the published package, its fast tests); `ui-install-e2e` (installs the built tarball into an outside consumer, the registry contact a `ui` change alone should reach); `repo` (the root: release wiring, publish script, probe and their tests); `report-job` (`.github/reporting`, the budget report job).
+- **Projects in the graph:** `ui` (the published package, its fast tests); `ui-install-e2e` (installs the built tarball into an outside consumer and drives it in Chromium, the registry and browser contact a `ui` change alone should reach); `repo` (the root: release wiring, publish script, probe and their tests); `report-job` (`.github/reporting`, the budget report job).
 - **Excluded, and why:** release-plz, its bot release pull request and the tag-triggered `build-*`/`publish` jobs, which `--ci-cd` renders: the owner chose semantic-release publishing on push to `main`, the shape `oneharness-ui` publishes in, and one platform-independent npm package has no per-platform build. So `compose_repo_plan.py --ci-cd` is not re-runnable here. asdf is only a `.tool-versions` convenience; direnv has no use here.
 
 ## Command surface
