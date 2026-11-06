@@ -1,0 +1,11 @@
+# What this repository publishes, for a consumer that waits on a release by name.
+# scripts/release-probe.sh answers what the registry serves for the target below.
+schema_version = 3
+probe = "scripts/release-probe.sh"
+
+[[target]]
+id = "npm:@onetaskgraph/ui"
+name = "npm"
+what = "React components for showing onetaskgraph tasks, as ESM with types and a stylesheet."
+published_by = ".github/workflows/release.yml — the release job, through scripts/publish-ui.mjs, under packages/ui/package.json's name."
+manifest = "packages/ui/package.json"

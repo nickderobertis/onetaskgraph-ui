@@ -1,0 +1,187 @@
+# Canonical command surface for this repo.
+#
+# Keep this list small and memorable. `just bootstrap` must work from a clean
+# clone; `just check` is the full quality gate (it must fail on any issue, with
+# no warnings-only mode). Every repo this skill stands up has an Nx project
+# graph, so these recipes DELEGATE to the orchestrator — never a hand-rolled loop
+# over packages. What a target *does* stays with the project that declares it
+# (its own formatter, linter, test runner); the root only decides which projects
+# run it. Replace the placeholder bodies, and adjust the target names below to
+# the ones your projects declare — see references/project-graph.md and
+# references/ci.md, then the matching references/languages/<lang>.md and
+# references/shapes/<shape>.md for the per-stack tools.
+
+# The merge base the affected tier keys off, as it arrives from the environment.
+# Derive it EXPLICITLY: Nx's implicit default is not deterministic across a
+# shallow CI checkout. CI exports NX_BASE (e.g. with `nx-set-shas`); locally this
+# falls back to the fork point from main.
+_nx_base_input := env_var_or_default("NX_BASE", "origin/main")
+
+# Validate that environment input at the boundary, before anything interpolates
+# it into a command: a git ref or SHA is letters, digits and `. _ / -`, so a
+# value carrying a quote, a `;`, or a `$(...)` is refused here rather than handed
+# to a shell. Everything below uses `base`, never the raw input.
+base := if _nx_base_input =~ '^[A-Za-z0-9._/-]+$' { _nx_base_input } else { error("NX_BASE must be a plain git ref or SHA — letters, digits and . _ / - only; got: " + _nx_base_input) }
+
+# List available recipes.
+default:
+    @just --list
+
+# Set up the project from a clean clone: the Node toolchain Nx runs on, then each
+# ecosystem's own workspace install — one lockfile per ecosystem, not one per
+# project. Every CI job runs this first, so the placeholder fails until it is filled:
+# an unimplemented install must fail its job rather than pass it.
+bootstrap:
+    @command -v bun >/dev/null 2>&1 || { echo "bootstrap: bun is required; install the version in .tool-versions" >&2; exit 1; }
+    @bun install --frozen-lockfile
+
+# Full quality gate. Defaults to the AFFECTED tier: every target that this change
+# can reach, and nothing else — the tier development and review run. `just check
+# all` runs the BROADER tier instead: one full sweep over every project, at the
+# single lifecycle point references/ci.md names (merge-to-main when the repo
+# releases on merge; release-prep when it batches releases). The tier is a flag
+# on this one command, never a second gate, so local and CI cannot drift.
+# Formatting and type checking are gated here through each project's own `lint`
+# and `typecheck` targets; the `&&` dependency runs `test-e2e` after the body at
+# the same tier, so e2e is part of the gate rather than an opt-in extra.
+#
+# just resolves the tier, rather than a shell `if`, for two reasons: `just -n
+# check` then prints the one command that will actually run, and a mistyped tier
+# aborts instead of quietly buying the weaker tier.
+check tier="affected": && (test-e2e tier) (budgets tier)
+    {{ if tier == "all" { "bunx nx run-many" } else if tier == "affected" { "bunx nx affected --base=" + base } else { error("unknown tier '" + tier + "' — use 'affected' (the default) or 'all'") } }} -t lint typecheck dependency-boundary test build
+
+# The full local gate, timed: the everyday gate plus the supply chain, run inside
+# scripts/gate-time.sh, which records its wall clock to .gate-time.json and then checks
+# `<name>-gate-time` (budgets.yaml, `host-variable`) against it — over its 30 minutes
+# warns and still passes, a missing record or an invalid budgets file fails. No pre-push
+# hook runs it: CI owns the gate, holding each job to its own `timeout-minutes`.
+gate:
+    @bash scripts/gate-time.sh just gate-body
+
+# What `just gate` times.
+gate-body: check supply-chain
+
+# The supply-chain checks the CI `lint` job runs once, platform-independent: dependency
+# licenses and advisories, and (Rust) the minimum supported Rust version.
+# The CI `lint` job runs it, so the placeholder fails until it is filled.
+supply-chain:
+    bun audit
+
+# What each CI test job runs on its platform: the tests, builds, e2e journeys and
+# per-project budgets of the projects this change can reach. Formatting, linting and the
+# supply chain run once, in the `lint` job, not again per platform.
+ci-test:
+    bunx nx affected --base={{base}} -t test build e2e budgets budgets-host
+
+# Compute the version from the commits on main, tag it and publish it, as
+# .github/workflows/release.yml does on every push to main (.releaserc.json).
+publish-release:
+    bunx semantic-release
+
+# Build the one published package, ignoring the cache: what ships is built fresh.
+build-ui:
+    bunx nx run ui:build --skip-nx-cache
+
+# Materialize the version semantic-release computed into the published manifest.
+set-version:
+    @bun scripts/set-version.mjs "${RELEASE_VERSION:-}"
+
+# The publish script's whole path through `bun publish --dry-run`, against the real registry.
+# It authenticates nothing, so a placeholder NPM_CONFIG_TOKEN is enough.
+publish-ui-dry-run: build-ui
+    @bun scripts/publish-ui.mjs --dry-run
+
+
+# The test tier on its own, for iterating: the same `test` target the gate fans
+# out over, scoped to the projects this change can reach. Each project's `test`
+# target enforces coverage (95% line coverage is the default bar); lower the bar
+# only with a documented reason in AGENTS.md — never leave it unmeasured.
+test:
+    bunx nx affected --base={{base}} -t test
+
+# Run the end-to-end suites, which exercise the built artifact the way users run
+# it. `check` runs this last, so e2e is gated on every change; run it alone while
+# you iterate on that tier. Each e2e suite is a project of its own declaring an
+# `e2e` target and depending only on what it tests, so the affected tier reaches
+# it exactly when a change can (references/project-graph.md). Cover the primary
+# happy path AND at least one meaningful failure/recovery path — not a smoke test.
+# If e2e genuinely does not apply (e.g. a pure library), delete this recipe, drop
+# it from `check`'s dependencies, and document why in AGENTS.md.
+test-e2e tier="affected":
+    {{ if tier == "all" { "bunx nx run-many" } else if tier == "affected" { "bunx nx affected --base=" + base } else { error("unknown tier '" + tier + "' — use 'affected' (the default) or 'all'") } }} -t e2e
+
+# Lint (and type check) the projects this change can reach; fail on findings.
+lint:
+    bunx nx affected --base={{base}} -t lint typecheck dependency-boundary
+
+# Format the whole tree in place — formatting is not a "what changed" question,
+# so this sweeps every project rather than the affected set.
+format:
+    bunx nx run-many -t format
+
+# Upgrade dependencies, then re-run the full gate as the broader tier: an upgrade
+# can reach any project, so the affected set would understate it.
+upgrade:
+    bun update
+    @just check all
+
+# Provision the dev toolchain for a session: ensure `just` (via uv, so a cloud
+# session that ships the language runtime but not `just` can still run these
+# recipes), verify the rest of the toolchain, then run setup-llmlint. Runs
+# automatically via the Claude Code SessionStart hook; this is the manual entry
+# point. Idempotent, no-ops in CI.
+session-setup:
+    ./scripts/session-setup.sh
+
+# Install/refresh the llmlint toolchain (oneharness + llmlint). Idempotent. Runs
+# automatically via the SessionStart hook (through session-setup); this is the
+# manual entry point for a plain terminal.
+setup-llmlint:
+    ./scripts/setup-llmlint.sh
+
+# LLM-judge lint (llmlint) — the non-deterministic, harness-backed tier. Kept OUT
+# of `check` on purpose: the gate stays deterministic and offline. Run it on
+# demand locally over the configured set (or pass paths to narrow); config is the
+# composed `llmlint.yml`. In a terminal run `just setup-llmlint` once first. See
+# references/llmlint.md.
+lint-llm *paths:
+    @command -v llmlint >/dev/null 2>&1 || { echo "llmlint not installed — run 'just setup-llmlint' (see references/llmlint.md)"; exit 1; }
+    llmlint {{paths}}
+
+# Fast, deterministic llmlint gate — NO model calls, no harness credential. Runs
+# every static check in one pass: config structure, `llmlint: ignore` directives
+# name real rules, and edited versioned fragments bumped their `version:`. This is
+# the cheap pre-flight CI runs before the model tier spends a harness call; run it
+# locally before pushing a config edit. Pass `--diff-base origin/main` to scope the
+# version-bump check to the branch's changes.
+lint-llm-validate *args:
+    @command -v llmlint >/dev/null 2>&1 || { echo "llmlint not installed — run 'just setup-llmlint' (see references/llmlint.md)"; exit 1; }
+    llmlint validate {{args}}
+
+# llmlint scoped to the files this branch changed since it forked from main. A
+# plain `--diff-base <ref>` uses three-dot/merge-base semantics (the `BASE...HEAD`
+# fork-point range, not a diff against main's current tip), so no explicit
+# `...HEAD` is needed. llmlint restricts the target set to the changed files
+# (skipping empty diffs) and the judge to the changed lines, so a PR is judged on
+# what it introduced. This is the blocking `llmlint` PR check; run it locally
+# before pushing. BASE defaults to origin/main (fetch it first if your clone lacks
+# it).
+lint-llm-diff base="origin/main" *args:
+    llmlint --diff --diff-base "{{base}}" {{args}}
+
+# Optional, but a common addition: a diagnostics recipe so `check` can stay
+# quiet on success. Push environment/version reporting here (toolchain versions,
+# tool presence, outdated deps) instead of letting it leak into the gate's
+# output. Add `setup`/`setup-check` recipes too if first-run machine setup is
+# more than `bootstrap`.
+# doctor:
+#     @echo "TODO: report toolchain + tool versions and flag anything missing"
+
+# The onebudgetspec budgets `check` runs at its tier: every domain's budget
+# targets, then the root `budgets.yaml` (references/tools/onebudgetspec.md) —
+# strictly, so it leaves out the `release-tail` budgets the release's `publish`
+# job reports and the `host-variable` one `just gate` checks as a warning.
+budgets tier="affected":
+    {{ if tier == "all" { "bunx nx run-many" } else if tier == "affected" { "bunx nx affected --base=" + base } else { error("unknown tier '" + tier + "' — use 'affected' (the default) or 'all'") } }} -t budgets budgets-host
+    [ ! -f budgets.yaml ] || bunx onebudgetspec check budgets.yaml --exclude-label release-tail --exclude-label host-variable

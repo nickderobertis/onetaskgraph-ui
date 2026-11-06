@@ -1,0 +1,8 @@
+{
+  "required_checks": [
+    "lint",
+    "test-linux",
+    "budgets"
+  ],
+  "strict": false
+}

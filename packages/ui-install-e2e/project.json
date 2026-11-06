@@ -1,0 +1,38 @@
+{
+  "name": "ui-install-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "tags": ["scope:ui", "type:e2e"],
+  "implicitDependencies": ["ui"],
+  "targets": {
+    "e2e": {
+      "command": "bun test --timeout 300000",
+      "options": {
+        "cwd": "packages/ui-install-e2e"
+      },
+      "dependsOn": ["^build"],
+      "inputs": [
+        "testInputs",
+        "^testInputs",
+        {
+          "runtime": "node -p process.platform"
+        }
+      ],
+      "outputs": []
+    },
+    "lint": {
+      "command": "bunx biome check --error-on-warnings packages/ui-install-e2e",
+      "cache": true
+    },
+    "format": {
+      "command": "bunx biome check --write packages/ui-install-e2e"
+    },
+    "typecheck": {
+      "command": "bunx tsc --noEmit -p packages/ui-install-e2e/tsconfig.json",
+      "cache": true
+    }
+  },
+  "namedInputs": {
+    "testInputs": ["npmTestInputs", "{projectRoot}/**/*"]
+  }
+}

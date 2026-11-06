@@ -1,0 +1,57 @@
+{
+  "name": "ui",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "packages/ui/src",
+  "tags": ["scope:ui", "type:library"],
+  "targets": {
+    "build": {
+      "command": "bun run build",
+      "options": {
+        "cwd": "packages/ui"
+      },
+      "cache": true,
+      "outputs": ["{projectRoot}/dist"],
+      "inputs": [
+        "default",
+        "^production",
+        {
+          "runtime": "node -p process.platform"
+        }
+      ]
+    },
+    "test": {
+      "command": "bun test",
+      "options": {
+        "cwd": "packages/ui"
+      },
+      "inputs": [
+        "testInputs",
+        "^testInputs",
+        {
+          "runtime": "node -p process.platform"
+        }
+      ],
+      "outputs": []
+    },
+    "lint": {
+      "command": "bunx biome check --error-on-warnings packages/ui",
+      "cache": true
+    },
+    "format": {
+      "command": "bunx biome check --write packages/ui"
+    },
+    "typecheck": {
+      "command": "bunx tsc --noEmit -p packages/ui/tsconfig.json",
+      "cache": true
+    },
+    "dependency-boundary": {
+      "command": "node scripts/check-ui-dependencies.mjs",
+      "cache": true,
+      "inputs": ["{projectRoot}/package.json", "{workspaceRoot}/scripts/check-ui-dependencies.mjs"]
+    }
+  },
+  "namedInputs": {
+    "testInputs": ["npmTestInputs", "{projectRoot}/**/*"]
+  }
+}

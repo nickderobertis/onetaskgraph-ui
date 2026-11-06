@@ -1,0 +1,28 @@
+{
+  "branches": ["main"],
+  "tagFormat": "v${version}",
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits",
+        "releaseRules": [
+          { "breaking": true, "release": "minor" },
+          { "type": "feat", "release": "minor" },
+          { "type": "fix", "release": "patch" },
+          { "type": "perf", "release": "patch" }
+        ]
+      }
+    ],
+    ["@semantic-release/release-notes-generator", { "preset": "conventionalcommits" }],
+    [
+      "@semantic-release/exec",
+      {
+        "verifyReleaseCmd": "bun scripts/publish-ui.mjs --verify-token",
+        "prepareCmd": "RELEASE_VERSION='${nextRelease.version}' just set-version",
+        "publishCmd": "bun scripts/publish-ui.mjs"
+      }
+    ],
+    "@semantic-release/github"
+  ]
+}

@@ -1,0 +1,66 @@
+# Publishes @onetaskgraph/ui when a releasing commit lands on main. Semantic-release decides from
+# the commits since the last tag (.releaserc.json), so a push with none ends here having published
+# nothing. It re-gates nothing: the tree on main is the one its pull request's jobs proved.
+#
+# This replaces the release-plz and tag-triggered workflows the composed CI/CD shape renders;
+# AGENTS.md's "Excluded, and why" says why. scripts/test/release-wiring.test.ts holds this file.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read # the release-tail figures
+      contents: write # the tag and the GitHub Release
+      issues: write # semantic-release comments on what a release closes
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # semantic-release reads every commit since the last tag
+      - uses: extractions/setup-just@v2
+      - uses: oven-sh/setup-bun@v2
+      - name: Bootstrap
+        run: just bootstrap
+      - name: Build the package
+        run: just build-ui
+      - name: Compute, tag and publish the release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: just publish-release
+      - name: Find the release this run published
+        id: released
+        shell: bash
+        run: echo "tag=$(git tag --points-at HEAD --list 'v*' | head -1)" >> "$GITHUB_OUTPUT"
+      # The release tail: reporting only, so it never turns a published release red. The figures
+      # script reads the release's tag from these two variables, since a push event names none.
+      - name: Install onevcs and onebudgetspec for the release tail
+        if: steps.released.outputs.tag != ''
+        continue-on-error: true
+        shell: bash
+        run: |
+          npm install --no-save --no-package-lock --no-audit --no-fund --prefix "$RUNNER_TEMP/release-tail" onevcs-cli@0.57.6 @onebudgetspec/cli@0.1.6
+          echo "$RUNNER_TEMP/release-tail/node_modules/.bin" >> "$GITHUB_PATH"
+      - name: Report the release-tail budgets
+        if: steps.released.outputs.tag != ''
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REF_TYPE: tag
+          GITHUB_REF_NAME: ${{ steps.released.outputs.tag }}
+        run: onebudgetspec check budgets.yaml --label release-tail

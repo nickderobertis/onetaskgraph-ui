@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+.nx/
+*.tgz
+.env
+.env.*
+.gate-time.json

@@ -1,0 +1,8 @@
+# Files the published artifacts are built from; git pathspecs.
+bun.lock
+package-lock.json
+packages/ui/README.md
+packages/ui/dist
+packages/ui/package.json
+packages/ui/src/**
+pnpm-lock.yaml
