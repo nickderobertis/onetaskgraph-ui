@@ -58,7 +58,6 @@ figure="${1:-}"
 if [ "$figure" = cache-use ]; then
   shift
   command -v node >/dev/null 2>&1 || missing "node is not on PATH" "install Node.js 24 and rerun this budget"
-  # llmlint: ignore[typescript_and_npm_launched_via_bun] This portable consumer helper uses Node built-ins and the shared contract requires node; consuming repositories need no bun package for it.
   exec node "$(dirname "$0")/nx-remote-cache.mjs" cache-use "$@"
 fi
 case "$figure" in

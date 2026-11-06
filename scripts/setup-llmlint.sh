@@ -27,7 +27,7 @@
 # Claude Code session where codex is absent — no `ONEHARNESS_*` override needed
 # (one would only clobber the fallback list). If your fallback order can't select
 # the right harness for some environment, set ONEHARNESS_HARNESSES there.
-# llmlint: ignore-file[robust_shell, tool_output_is_signal, boundary_inputs_validated] deliberate for a session-startup installer (see header): `set -e` is omitted so a flaky install can't abort the hook — the script owns its exit codes and always exits 0; success stays quiet while failures log-and-continue rather than block startup; and the toolchain is installed from PyPI (`uv tool install llmlint-cli`) whose wheels ship with Trusted Publishing + PEP 740 attestations, so no unvalidated external input is executed.
+# llmlint: ignore-file[tool_output_is_signal, boundary_inputs_validated] deliberate for a session-startup installer (see header): `set -e` is omitted so a flaky install can't abort the hook — the script owns its exit codes and always exits 0; success stays quiet while failures log-and-continue rather than block startup; and the toolchain is installed from PyPI (`uv tool install llmlint-cli`) whose wheels ship with Trusted Publishing + PEP 740 attestations, so no unvalidated external input is executed.
 set -uo pipefail
 
 # Version floor, as a PyPI constraint (the `llmlint-cli` package version tracks the
@@ -48,10 +48,19 @@ readonly BIN_DIR="$HOME/.local/bin"
 
 log() { printf 'setup-llmlint: %s\n' "$*" >&2; }
 
-# Install llmlint from PyPI via uv (the repo's Python package manager). uv is a
-# clean-clone prerequisite; if it is somehow absent, log an actionable pointer and
-# leave any already-installed binary in place rather than aborting startup.
+# Install uv from PyPI where only pipx is present: this repo's toolchain carries no
+# Python, and the `lint` job's runner image ships pipx but not uv.
+ensure_uv() {
+  command -v uv >/dev/null 2>&1 && return 0
+  command -v pipx >/dev/null 2>&1 || return 0
+  log "uv not found; installing it via pipx"
+  pipx install uv >&2 || log "uv install via pipx failed (continuing)"
+}
+
+# Install llmlint from PyPI via uv. If uv is still absent, log an actionable pointer
+# and leave any already-installed binary in place rather than aborting startup.
 ensure_toolchain() {
+  ensure_uv
   if ! command -v uv >/dev/null 2>&1; then
     log "uv not found; cannot install llmlint (install uv: https://docs.astral.sh/uv/)"
     return 0

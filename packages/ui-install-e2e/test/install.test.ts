@@ -1,16 +1,9 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, relative, resolve } from "node:path";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { installConsumer, removeConsumer, run } from "./consumer";
 
-const repository = resolve(import.meta.dir, "../../..");
 let consumer: string;
-
-function run(command: string, args: string[], cwd: string) {
-  const result = spawnSync(command, args, { cwd, encoding: "utf8" });
-  return { status: result.status, stdout: result.stdout, stderr: result.stderr };
-}
 
 function runInConsumer(source: string) {
   writeFileSync(join(consumer, "probe.mjs"), source);
@@ -18,46 +11,48 @@ function runInConsumer(source: string) {
 }
 
 beforeAll(() => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "onetaskgraph-ui-consumer-")));
-  consumer = join(root, "consumer");
-  mkdirSync(consumer);
-  if (!relative(repository, consumer).startsWith("..")) {
-    throw new Error(`the consumer must sit outside the repository; TMPDIR put it at ${consumer}`);
-  }
-
-  const pack = run(
-    "npm",
-    ["pack", "--json", "--pack-destination", root],
-    join(repository, "packages/ui"),
-  );
-  if (pack.status !== 0) throw new Error(`npm pack failed; run just build-ui: ${pack.stderr}`);
-  const [report] = JSON.parse(pack.stdout);
-
-  writeFileSync(
-    join(consumer, "package.json"),
-    JSON.stringify({ name: "consumer", private: true, type: "module" }),
-  );
-  const install = run(
-    "npm",
-    ["install", "--no-audit", "--no-fund", join(root, report.filename)],
-    consumer,
-  );
-  if (install.status !== 0) throw new Error(`npm install failed: ${install.stderr}`);
+  consumer = installConsumer();
 });
 
-afterAll(() => {
-  rmSync(resolve(consumer, ".."), { recursive: true, force: true });
-});
+afterAll(() => removeConsumer(consumer));
 
-test("the main entry resolves through its export and renders", () => {
+test("TaskMarkdown server-renders a GFM table through its declared dependencies", () => {
   const result = runInConsumer(`
     import { createElement } from "react";
     import { renderToStaticMarkup } from "react-dom/server";
-    import { TaskPlaceholder } from "@onetaskgraph/ui";
-    console.log(renderToStaticMarkup(createElement(TaskPlaceholder, { title: "Ship it" })));
+    import { TaskMarkdown } from "@onetaskgraph/ui";
+    const source = "| Region | State |\\n| --- | --- |\\n| eu-west | **done** |";
+    console.log(renderToStaticMarkup(createElement(TaskMarkdown, { source })));
   `);
   expect(result.stderr).toBe("");
-  expect(result.stdout.trim()).toBe('<article class="otg-task">Ship it</article>');
+  expect(result.status).toBe(0);
+  expect(result.stdout).toMatch(
+    /<table>[\s\S]*<th>Region<\/th>[\s\S]*<td><strong>done<\/strong><\/td>/,
+  );
+});
+
+test("TaskCard server-renders its article, title and markdown body", () => {
+  const result = runInConsumer(`
+    import { createElement } from "react";
+    import { renderToStaticMarkup } from "react-dom/server";
+    import { TaskCard, TaskSourceLink } from "@onetaskgraph/ui";
+    console.log(renderToStaticMarkup(createElement(TaskCard, {
+      title: "Ship it",
+      body: "See https://example.org/plan",
+      links: createElement(TaskSourceLink, { url: "https://linear.app/t/T-1", label: "T-1" }),
+      "data-task": "T-1",
+    })));
+  `);
+  expect(result.stderr).toBe("");
+  expect(result.status).toBe(0);
+  const titleId = result.stdout.match(/<article[^>]*aria-labelledby="([^"]+)"/)?.[1];
+  expect(titleId).toBeTruthy();
+  expect(result.stdout).toContain(`<h3 class="otg-card__title" id="${titleId}">Ship it</h3>`);
+  expect(result.stdout).toContain('data-task="T-1"');
+  expect(result.stdout).toContain('aria-label="Open Linear issue T-1"');
+  expect(result.stdout).toContain(
+    '<a href="https://example.org/plan" target="_blank" rel="noopener noreferrer">',
+  );
 });
 
 test("styles.css resolves through its export to a real stylesheet", () => {
@@ -72,7 +67,8 @@ test("styles.css resolves through its export to a real stylesheet", () => {
   expect(result.stdout).toContain(
     join("node_modules", "@onetaskgraph", "ui", "dist", "styles.css"),
   );
-  expect(result.stdout).toContain(".otg-task");
+  expect(result.stdout).toContain(".otg-card");
+  expect(result.stdout).toContain(".otg-markdown");
 });
 
 test("the declared types ship in the tarball", () => {

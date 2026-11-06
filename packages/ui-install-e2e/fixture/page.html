@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TaskCard journey</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/page.css" />
+    <style>
+      /* Actor ships one face and this declares it alone, so bold can only be synthesized. */
+      @font-face {
+        font-family: "One Face";
+        src: url("/actor.woff2") format("woff2");
+        font-weight: 400;
+      }
+      /* onepipeline-ui's styles.css sets this on :root, which is what hid bold in the spike. */
+      :root {
+        font-family: "One Face", sans-serif;
+        font-size: 16px;
+        font-synthesis: none;
+        line-height: 24px;
+      }
+      body {
+        margin: 0;
+      }
+      section {
+        display: flow-root;
+        padding: 16px;
+      }
+      section > * + * {
+        margin-top: 16px;
+      }
+      [data-rendering] {
+        background: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/page.js"></script>
+  </body>
+</html>

@@ -10,7 +10,7 @@
       "options": {
         "cwd": "packages/ui-install-e2e"
       },
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "install-browser"],
       "inputs": [
         "testInputs",
         "^testInputs",
@@ -19,6 +19,12 @@
         }
       ],
       "outputs": []
+    },
+    "install-browser": {
+      "command": "bunx playwright install ${CI:+--with-deps} chromium",
+      "options": {
+        "cwd": "packages/ui-install-e2e"
+      }
     },
     "lint": {
       "command": "bunx biome check --error-on-warnings packages/ui-install-e2e",

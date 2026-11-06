@@ -215,7 +215,6 @@ async function ready(opts) {
     return;
   }
   const secret = randomUUID();
-  // llmlint: ignore[typescript_and_npm_launched_via_bun] Restart this same portable Node CLI with its current interpreter; consumers do not install a bun package for the proxy.
   const child = spawn(process.execPath, [self, '_proxy'], {
     env: { ...env, NX_RECORDING_SECRET: secret },
     detached: true,
@@ -606,7 +605,6 @@ class Github {
         (binary ? '.zip' : '.json'),
     );
     if (!existsSync(path)) {
-      // llmlint: ignore[scripts_runtime_independent] The budget contract requires read-only gh API pagination with the runner authentication; gh is provided on the GitHub-hosted runner, with no authoring dependency.
       const body = execFileSync(
         'gh',
         [
@@ -1277,7 +1275,6 @@ function commitChangesPublished(sha) {
   check(specs.length > 0, 'empty .github/release-published-paths');
   try {
     return (
-      // llmlint: ignore[scripts_runtime_independent] The published-path contract reads merge diffs from the consumer checkout with git; git is provided on the GitHub-hosted runner, with no authoring dependency.
       execFileSync(
         'git',
         ['diff', '--name-only', `${sha}^1`, sha, '--', ...specs],
