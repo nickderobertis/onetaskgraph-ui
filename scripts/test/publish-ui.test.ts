@@ -28,6 +28,8 @@ async function publish(args: string[], token: string | null = PLACEHOLDER_TOKEN)
     PATH: process.env.PATH ?? "",
     HOME: process.env.HOME ?? "",
     NPM_CONFIG_REGISTRY: `http://127.0.0.1:${registry.port}/`,
+    // CI is not passed down, so a fresh HOME has npm ask this registry for its own latest version.
+    NPM_CONFIG_UPDATE_NOTIFIER: "false",
   };
   if (token !== null) env.NPM_CONFIG_TOKEN = token;
   const child = Bun.spawn(["bun", "scripts/publish-ui.mjs", ...args], {
