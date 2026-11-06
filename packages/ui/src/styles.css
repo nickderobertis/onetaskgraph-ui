@@ -13,36 +13,26 @@
   overflow-wrap: anywhere;
 }
 
+/*
+ * Text lines sit on one grid, with no vertical gap between blocks: a clamped body has to show its
+ * first lines exactly where the whole body has them and still fit that many lines' height, and any
+ * gap would break one or the other. Bold, markers and the indent below separate blocks instead.
+ */
 .otg-markdown * {
   margin-block: 0;
 }
 
-.otg-markdown > * + *,
-.otg-markdown li > * + *,
-.otg-markdown blockquote > * + * {
-  margin-block-start: 0.5em;
+.otg-markdown p + p {
+  text-indent: 1.5em;
 }
 
 .otg-markdown strong {
   font-weight: 700;
 }
 
-.otg-markdown h1,
-.otg-markdown h2,
-.otg-markdown h3,
-.otg-markdown h4,
-.otg-markdown h5,
-.otg-markdown h6 {
+.otg-markdown :is(h1, h2, h3, h4, h5, h6) {
   font-size: 1em;
   font-weight: 700;
-}
-
-.otg-markdown h1 {
-  font-size: 1.25em;
-}
-
-.otg-markdown h2 {
-  font-size: 1.125em;
 }
 
 .otg-markdown ul,
@@ -73,9 +63,11 @@
   padding-inline-start: 0.75em;
 }
 
+/* Drawn without height, so it stays off the line grid. */
 .otg-markdown hr {
   border: 0;
-  border-block-start: 1px solid var(--otg-border, color-mix(in srgb, currentColor 20%, transparent));
+  box-shadow: 0 1px 0 var(--otg-border, color-mix(in srgb, currentColor 20%, transparent));
+  height: 0;
 }
 
 /* Line height 1 so another font's baseline cannot make a line of text taller than the others. */
@@ -86,6 +78,7 @@
 }
 
 .otg-markdown pre {
+  font-size: 1em;
   white-space: pre-wrap;
 }
 
@@ -104,56 +97,37 @@
   text-align: start;
 }
 
-/*
- * A clamped body in either form. Its maximum height, set inline, is the requested lines. A body
- * that fits (data-otg-fits, measured in the browser) is otherwise exactly as it is unclamped.
- */
+/* Its maximum height, set inline, is the requested lines. */
 .otg-markdown--clamped {
-  overflow: hidden;
-}
-
-/* A body that does not fit: gaps and sizes give way so that its lines are all one height. */
-.otg-markdown--clamped:not([data-otg-fits]) {
   -webkit-box-orient: vertical;
   display: -webkit-box;
-}
-
-.otg-markdown--clamped:not([data-otg-fits]) * {
-  margin-block: 0;
-}
-
-.otg-markdown--clamped:not([data-otg-fits]) :is(h1, h2, h3, h4, h5, h6, pre) {
-  font-size: 1em;
-}
-
-.otg-markdown--clamped:not([data-otg-fits]) hr {
-  display: none;
+  overflow: hidden;
 }
 
 /*
  * A table is not lines, so the line clamp cannot end it. Here it keeps its rows and cells, takes
  * what the lines above it leave but one, and the ellipsis has that last line to itself.
  */
-.otg-markdown--clamped[data-otg-table-cut]:not([data-otg-fits]) {
+.otg-markdown--clamped[data-otg-table-cut] {
   display: flex;
   flex-direction: column;
 }
 
-.otg-markdown--clamped[data-otg-table-cut]:not([data-otg-fits]) > * {
+.otg-markdown--clamped[data-otg-table-cut] > * {
   flex: none;
 }
 
-.otg-markdown--clamped[data-otg-table-cut]:not([data-otg-fits]) > :is(table, :has(table)) {
+.otg-markdown--clamped[data-otg-table-cut] > :is(table, :has(table)) {
   flex: 0 1 auto;
   min-height: 0;
   overflow: hidden;
 }
 
-.otg-markdown--clamped[data-otg-table-cut]:not([data-otg-fits]) > :is(table, :has(table)) ~ * {
+.otg-markdown--clamped[data-otg-table-cut] > :is(table, :has(table)) ~ * {
   display: none;
 }
 
-.otg-markdown--clamped[data-otg-table-cut]:not([data-otg-fits])::after {
+.otg-markdown--clamped[data-otg-table-cut]::after {
   content: "…";
   flex: none;
 }

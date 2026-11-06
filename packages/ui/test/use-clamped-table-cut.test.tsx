@@ -64,49 +64,53 @@ function resize(width: number) {
   for (const { callback } of observers) callback();
 }
 
-test("a body that fits is marked as fitting", () => {
-  expect(clamped("words").hasAttribute("data-otg-fits")).toBe(true);
-});
+const CUT = "data-otg-table-cut";
 
-test("a body that overflows is not, and without a table it needs no table ellipsis", () => {
-  layout.scrollHeight = 200;
-  const root = clamped("words");
-  expect(root.hasAttribute("data-otg-fits")).toBe(false);
-  expect(root.hasAttribute("data-otg-table-cut")).toBe(false);
-});
-
-test("an overflowing body's table is cut only when it reaches into the lines", () => {
+test("a table the clamp cuts is marked", () => {
   layout.scrollHeight = 200;
   layout.tableTop = 24;
-  expect(clamped(TABLE).hasAttribute("data-otg-table-cut")).toBe(true);
+  expect(clamped(TABLE).hasAttribute(CUT)).toBe(true);
+});
+
+test("a table below the visible lines is not", () => {
+  layout.scrollHeight = 200;
   layout.tableTop = 96;
-  expect(clamped(TABLE).hasAttribute("data-otg-table-cut")).toBe(false);
+  expect(clamped(TABLE).hasAttribute(CUT)).toBe(false);
+});
+
+test("a table in a body that fits is not", () => {
+  expect(clamped(TABLE).hasAttribute(CUT)).toBe(false);
+});
+
+test("an overflowing body with no table is not", () => {
+  layout.scrollHeight = 200;
+  expect(clamped("words").hasAttribute(CUT)).toBe(false);
 });
 
 test("a change of width decides again, and a change of height alone does not", () => {
-  const root = clamped("words");
+  const root = clamped(TABLE);
   layout.scrollHeight = 200;
   resize(400);
-  expect(root.hasAttribute("data-otg-fits")).toBe(true);
+  expect(root.hasAttribute(CUT)).toBe(false);
   resize(100);
-  expect(root.hasAttribute("data-otg-fits")).toBe(false);
+  expect(root.hasAttribute(CUT)).toBe(true);
 });
 
 test("a font arriving decides again", async () => {
-  const root = clamped("words");
+  const root = clamped(TABLE);
   layout.scrollHeight = 200;
   await act(async () => {
     fontsReady();
     await document.fonts.ready;
   });
-  expect(root.hasAttribute("data-otg-fits")).toBe(false);
+  expect(root.hasAttribute(CUT)).toBe(true);
 });
 
 test("a font arriving after the body has gone changes nothing", async () => {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
-  act(() => root.render(<TaskMarkdown source="words" clamp={4} />));
+  act(() => root.render(<TaskMarkdown source={TABLE} clamp={4} />));
   const body = only(container, ".otg-markdown");
   act(() => root.unmount());
   expect(observers.map(({ disconnected }) => disconnected)).toEqual([true]);
@@ -115,7 +119,7 @@ test("a font arriving after the body has gone changes nothing", async () => {
     fontsReady();
     await document.fonts.ready;
   });
-  expect(body.hasAttribute("data-otg-fits")).toBe(true);
+  expect(body.hasAttribute(CUT)).toBe(false);
   container.remove();
 });
 
@@ -123,19 +127,20 @@ test("a new source decides again, and the old observer is let go", () => {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
-  act(() => root.render(<TaskMarkdown source="short" clamp={4} />));
+  act(() => root.render(<TaskMarkdown source={TABLE} clamp={4} />));
   const body = only(container, ".otg-markdown");
-  expect(body.hasAttribute("data-otg-fits")).toBe(true);
+  expect(body.hasAttribute(CUT)).toBe(false);
   layout.scrollHeight = 200;
-  act(() => root.render(<TaskMarkdown source="now far longer" clamp={4} />));
-  expect(body.hasAttribute("data-otg-fits")).toBe(false);
+  act(() => root.render(<TaskMarkdown source={`${TABLE}\n| c |`} clamp={4} />));
+  expect(body.hasAttribute(CUT)).toBe(true);
   expect(observers.map(({ disconnected }) => disconnected)).toEqual([true, false]);
   act(() => root.unmount());
   container.remove();
 });
 
 test("an unclamped body measures nothing", () => {
-  const root = only(render(<TaskMarkdown source="words" />), ".otg-markdown");
-  expect(root.hasAttribute("data-otg-fits")).toBe(false);
+  layout.scrollHeight = 200;
+  const root = only(render(<TaskMarkdown source={TABLE} />), ".otg-markdown");
+  expect(root.hasAttribute(CUT)).toBe(false);
   expect(observers).toHaveLength(0);
 });

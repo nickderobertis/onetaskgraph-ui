@@ -152,8 +152,8 @@ test("a clamped body is limited inline to its lines", () => {
   expect(only(view, ".otg-markdown").style.maxHeight).toBe("calc(4 * 1lh)");
 });
 
-test("a server render of a clamped body is the overflowing form until measured", () => {
+test("a server render of a clamped body is clamped before anything has measured it", () => {
   const markup = renderToStaticMarkup(<TaskMarkdown source="words" clamp={4} />);
   expect(markup).toContain("otg-markdown--clamped");
-  expect(markup).not.toContain("data-otg-fits");
+  expect(markup).toContain("-webkit-line-clamp:4");
 });

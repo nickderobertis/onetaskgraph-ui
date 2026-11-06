@@ -232,9 +232,9 @@ async function screenshotClippedTo(name: string, height: number) {
 }
 
 /**
- * The clamped body against the same body whole, inside a wrapper this journey clips to four lines:
- * its gaps between blocks are removed there too, so a line sits at the same height in both. Merely
- * clipping the body, or clipping the ellipsis away, leaves the fourth line matching.
+ * The clamped body against the same body unclamped at the same width, inside a wrapper this journey
+ * clips to four lines. Merely clipping the body, or clipping the ellipsis away, leaves the fourth
+ * line matching; spacing that differs between the two leaves the first three lines apart.
  */
 for (const body of [
   "long",
@@ -244,6 +244,7 @@ for (const body of [
   "long-then-table",
   "four-then-table",
   "three-then-table",
+  "rich",
 ]) {
   test(`a clamp of four lines limits the ${body} body and ends it in a visible ellipsis`, async () => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -252,9 +253,6 @@ for (const body of [
     const clampedBox = await box(rendering(`${body}-clamped`));
     expect(clampedBox.bottom - clampedBox.top).toBe(4 * lineHeight);
 
-    await page.addStyleTag({
-      content: `[data-rendering="${body}-unclamped"] .otg-markdown * { margin-block: 0 !important; }`,
-    });
     const clamped = rowsOf(await rendering(`${body}-clamped`).screenshot());
     const clipped = rowsOf(await screenshotClippedTo(`${body}-unclamped`, 4 * lineHeight));
     expect([clamped.width, clamped.height]).toEqual([clipped.width, clipped.height]);
@@ -283,7 +281,7 @@ test("a body clamped short of its table keeps the table's rows and cells", async
   }
 });
 
-test("a narrower container re-decides whether the body fits", async () => {
+test("a narrower container clamps a body that fitted a wider one", async () => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const target = rendering("short-clamped");
   const fitsWhole = await box(target);
@@ -328,12 +326,6 @@ test("bodies filling their lines exactly lose nothing to the clamp", async () =>
     return (last?.bottom ?? Number.POSITIVE_INFINITY) - root.getBoundingClientRect().bottom;
   });
   expect(overshoot).toBeLessThanOrEqual(0);
-});
-
-test("a clamp holds four lines whatever the blocks, under a unitless line height", async () => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  const rich = await box(rendering("rich-clamped"));
-  expect(rich.bottom - rich.top).toBe(4 * 24);
 });
 
 test("the same words bold and regular differ, in a font with no bold face", async () => {

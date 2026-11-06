@@ -127,11 +127,11 @@ function Rendering({ name, source, clamp, style }) {
 }
 
 /** The same body clamped to four lines and whole, for the journey to compare. */
-function Pair({ name, source }) {
+function Pair({ name, source, style }) {
   return (
     <>
-      <Rendering name={`${name}-clamped`} source={source} clamp={4} />
-      <Rendering name={`${name}-unclamped`} source={source} />
+      <Rendering name={`${name}-clamped`} source={source} clamp={4} style={style} />
+      <Rendering name={`${name}-unclamped`} source={source} style={style} />
     </>
   );
 }
@@ -163,7 +163,7 @@ function App() {
         <Pair name="four-then-table" source={`${HARD_LINES(4)}\n\n${TABLE_BODY}`} />
         <Pair name="three-then-table" source={`${HARD_LINES(3)}\n\n${TABLE_BODY}`} />
         <Pair name="four-blocks" source={"One.\n\nTwo.\n\nThree.\n\nFour."} />
-        <Rendering name="rich-clamped" source={RICH_BODY} clamp={4} style={{ lineHeight: 1.5 }} />
+        <Pair name="rich" source={RICH_BODY} style={{ lineHeight: 1.5 }} />
         <Rendering name="bold" source="**The same words**" />
         <Rendering name="regular" source="The same words" />
         <Rendering

@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { linkableUrl, NEW_TAB_ATTRIBUTES } from "./safe-url";
-import { useClampFit } from "./use-clamp-fit";
+import { useClampedTableCut } from "./use-clamped-table-cut";
 
 export type TaskMarkdownProps = {
   /** Untrusted GitHub-flavoured markdown. */
@@ -63,7 +63,7 @@ const REHYPE_PLUGINS = [rehypeFlattenLinkedImages];
  */
 export function TaskMarkdown({ source, clamp }: TaskMarkdownProps) {
   const lines = clamp !== undefined && Number.isInteger(clamp) && clamp > 0 ? clamp : undefined;
-  const ref = useClampFit(lines, source);
+  const ref = useClampedTableCut(lines, source);
   const style: CSSProperties | undefined =
     lines === undefined ? undefined : { WebkitLineClamp: lines, maxHeight: `calc(${lines} * 1lh)` };
   return (

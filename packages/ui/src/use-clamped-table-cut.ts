@@ -4,24 +4,19 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 const useBrowserLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /**
- * Decides, from the laid-out body, which of the stylesheet's two clamped forms applies: only a
- * browser can tell whether a body with gaps between its blocks fits its lines. It writes attributes
- * React does not own, so a re-render leaves them be, and a server render, having no measure, is
- * the overflowing form until this runs.
+ * Marks a clamped body whose table is cut by the clamp. The line clamp skips a table, so only the
+ * laid-out body can say that one reaches into its lines and needs an ellipsis of its own. The
+ * attribute is one React does not own, so a re-render leaves it be.
  */
-export function useClampFit(clamp: number | undefined, source: string) {
+export function useClampedTableCut(clamp: number | undefined, source: string) {
   const ref = useRef<HTMLDivElement>(null);
   useBrowserLayoutEffect(() => {
     const root = ref.current;
     if (!root || clamp === undefined) return;
     const measure = () => {
       root.removeAttribute("data-otg-table-cut");
-      root.setAttribute("data-otg-fits", "");
-      if (root.scrollHeight <= root.clientHeight) return;
-      root.removeAttribute("data-otg-fits");
-      // The line clamp skips a table, so one that reaches into the lines needs its own ellipsis.
       const table = root.querySelector("table");
-      if (!table) return;
+      if (!table || root.scrollHeight <= root.clientHeight) return;
       const top = table.getBoundingClientRect().top - root.getBoundingClientRect().top;
       root.toggleAttribute("data-otg-table-cut", top < root.clientHeight);
     };
