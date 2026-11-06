@@ -78,9 +78,11 @@
   border-block-start: 1px solid var(--otg-border, color-mix(in srgb, currentColor 20%, transparent));
 }
 
+/* Line height 1 so another font's baseline cannot make a line of text taller than the others. */
 .otg-markdown code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.9em;
+  line-height: 1;
 }
 
 .otg-markdown pre {
@@ -102,34 +104,58 @@
   text-align: start;
 }
 
+/*
+ * A clamped body in either form. Its maximum height, set inline, is the requested lines. A body
+ * that fits (data-otg-fits, measured in the browser) is otherwise exactly as it is unclamped.
+ */
 .otg-markdown--clamped {
-  -webkit-box-orient: vertical;
-  display: -webkit-box;
   overflow: hidden;
 }
 
+/* A body that does not fit: gaps and sizes give way so that its lines are all one height. */
+.otg-markdown--clamped:not([data-otg-fits]) {
+  -webkit-box-orient: vertical;
+  display: -webkit-box;
+}
+
+.otg-markdown--clamped:not([data-otg-fits]) * {
+  margin-block: 0;
+}
+
+.otg-markdown--clamped:not([data-otg-fits]) :is(h1, h2, h3, h4, h5, h6, pre) {
+  font-size: 1em;
+}
+
+.otg-markdown--clamped:not([data-otg-fits]) hr {
+  display: none;
+}
+
 /*
- * The line clamp counts only lines in the box's own flow, and a table starts another. Flattened
- * into that flow its text counts, and ends in the ellipsis, like any other text.
+ * A table is not lines, so the line clamp cannot end it. Here it keeps its rows and cells, takes
+ * what the lines above it leave but one, and the ellipsis has that last line to itself.
  */
-.otg-markdown--clamped table,
-.otg-markdown--clamped thead,
-.otg-markdown--clamped tbody,
-.otg-markdown--clamped tr,
-.otg-markdown--clamped th,
-.otg-markdown--clamped td {
-  border: 0;
-  display: inline;
-  padding: 0;
+.otg-markdown--clamped[data-otg-table-cut]:not([data-otg-fits]) {
+  display: flex;
+  flex-direction: column;
 }
 
-.otg-markdown--clamped th::after,
-.otg-markdown--clamped td::after {
-  content: " ";
+.otg-markdown--clamped[data-otg-table-cut]:not([data-otg-fits]) > * {
+  flex: none;
 }
 
-.otg-markdown--clamped tr::after {
-  content: "· ";
+.otg-markdown--clamped[data-otg-table-cut]:not([data-otg-fits]) > :is(table, :has(table)) {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.otg-markdown--clamped[data-otg-table-cut]:not([data-otg-fits]) > :is(table, :has(table)) ~ * {
+  display: none;
+}
+
+.otg-markdown--clamped[data-otg-table-cut]:not([data-otg-fits])::after {
+  content: "…";
+  flex: none;
 }
 
 /*

@@ -26,7 +26,7 @@ import "@onetaskgraph/ui/styles.css";
 
 Renders GitHub-flavoured markdown. Raw HTML shows as its text and never as HTML. A link keeps its target only for `http`, `https` and `mailto`, and opens in a new tab; any other link, a relative one included, shows as its text. An image is never fetched: it shows as a link to its source under its alt text, or the word `image`, on the same rule.
 
-`clamp` is a number of lines, ending in an ellipsis when there are more. Lines are counted across blocks, and the gaps between blocks are kept, so a clamped body of several blocks is a little taller than that many lines. A clamped table flattens into text so that its lines count.
+`clamp` is a number of lines, and never more than that height. A body that fits shows exactly as it does unclamped. One that does not ends in an ellipsis, with the gaps between its blocks closed so that its lines fit; a table in it keeps its rows and cells and is cut above an ellipsis on the last line. Whether a body fits is measured in the browser, so a server render with no JavaScript shows the second form.
 
 ## `TaskSourceLink({ url, label, ...anchor attributes })` and `taskSourceProvider(url)`
 

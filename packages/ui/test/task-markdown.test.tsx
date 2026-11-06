@@ -146,3 +146,14 @@ test.each([0, -1, 1.5, Number.NaN])(
     expect(root.classList.contains("otg-markdown--clamped")).toBe(false);
   },
 );
+
+test("a clamped body is limited inline to its lines", () => {
+  const view = render(<TaskMarkdown source="words" clamp={4} />);
+  expect(only(view, ".otg-markdown").style.maxHeight).toBe("calc(4 * 1lh)");
+});
+
+test("a server render of a clamped body is the overflowing form until measured", () => {
+  const markup = renderToStaticMarkup(<TaskMarkdown source="words" clamp={4} />);
+  expect(markup).toContain("otg-markdown--clamped");
+  expect(markup).not.toContain("data-otg-fits");
+});

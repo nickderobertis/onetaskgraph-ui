@@ -231,27 +231,78 @@ async function screenshotClippedTo(name: string, height: number) {
   return screenshot;
 }
 
-test("a clamp of four lines limits a longer body and ends it in a visible ellipsis", async () => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  const lineHeight = await lineHeightOf("long-clamped");
-  expect(lineHeight).toBe(24);
-  const clampedBox = await box(rendering("long-clamped"));
-  expect(clampedBox.bottom - clampedBox.top).toBe(4 * lineHeight);
+/**
+ * The clamped body against the same body whole, inside a wrapper this journey clips to four lines:
+ * its gaps between blocks are removed there too, so a line sits at the same height in both. Merely
+ * clipping the body, or clipping the ellipsis away, leaves the fourth line matching.
+ */
+for (const body of [
+  "long",
+  "mixed",
+  "table",
+  "text-then-table",
+  "long-then-table",
+  "four-then-table",
+  "three-then-table",
+]) {
+  test(`a clamp of four lines limits the ${body} body and ends it in a visible ellipsis`, async () => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const lineHeight = await lineHeightOf(`${body}-clamped`);
+    expect(lineHeight).toBe(24);
+    const clampedBox = await box(rendering(`${body}-clamped`));
+    expect(clampedBox.bottom - clampedBox.top).toBe(4 * lineHeight);
 
-  const clamped = rowsOf(await rendering("long-clamped").screenshot());
-  const clipped = rowsOf(await screenshotClippedTo("long-unclamped", 4 * lineHeight));
-  expect([clamped.width, clamped.height]).toEqual([clipped.width, clipped.height]);
-  expect(rowsMatch(clamped, clipped, 0, 3 * lineHeight)).toBe(true);
-  expect(rowsMatch(clamped, clipped, 3 * lineHeight, 4 * lineHeight)).toBe(false);
-});
+    await page.addStyleTag({
+      content: `[data-rendering="${body}-unclamped"] .otg-markdown * { margin-block: 0 !important; }`,
+    });
+    const clamped = rowsOf(await rendering(`${body}-clamped`).screenshot());
+    const clipped = rowsOf(await screenshotClippedTo(`${body}-unclamped`, 4 * lineHeight));
+    expect([clamped.width, clamped.height]).toEqual([clipped.width, clipped.height]);
+    expect(rowsMatch(clamped, clipped, 0, 3 * lineHeight)).toBe(true);
+    expect(rowsMatch(clamped, clipped, 3 * lineHeight, 4 * lineHeight)).toBe(false);
+  });
+}
 
 test("a body shorter than the clamp shows whole and matches its unclamped screenshot", async () => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  for (const body of ["short", "blocks"]) {
+  for (const body of ["short", "blocks", "short-table"]) {
     const clamped = await rendering(`${body}-clamped`).screenshot();
     const unclamped = await rendering(`${body}-unclamped`).screenshot();
     expect(clamped.equals(unclamped)).toBe(true);
   }
+});
+
+test("a body clamped short of its table keeps the table's rows and cells", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  for (const body of ["short-table", "table", "text-then-table"]) {
+    const display = await rendering(`${body}-clamped`)
+      .locator("td")
+      .first()
+      .evaluate((cell) => getComputedStyle(cell).display);
+    expect(display).toBe("table-cell");
+  }
+});
+
+test("a narrower container re-decides whether the body fits", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const target = rendering("short-clamped");
+  const fitsWhole = await box(target);
+  expect(fitsWhole.bottom - fitsWhole.top).toBeLessThan(4 * 24);
+  await target.evaluate((element) => {
+    (element as HTMLElement).style.width = "60px";
+  });
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-rendering="short-clamped"]')?.getBoundingClientRect().height ===
+      96,
+  );
+  await target.evaluate((element) => (element as HTMLElement).style.removeProperty("width"));
+  await page.waitForFunction(
+    (height) =>
+      document.querySelector('[data-rendering="short-clamped"]')?.getBoundingClientRect().height ===
+      height,
+    fitsWhole.bottom - fitsWhole.top,
+  );
 });
 
 test("an unclamped longer body shows every line", async () => {
@@ -267,15 +318,22 @@ test("an unclamped longer body shows every line", async () => {
   expect(whole.bottom - whole.top).toBe(lines * lineHeight);
 });
 
-test("a clamp counts the lines of a body with several blocks, and of a table", async () => {
+test("bodies filling their lines exactly lose nothing to the clamp", async () => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const lineHeight = await lineHeightOf("mixed-clamped");
-  const mixed = await box(rendering("mixed-clamped"));
-  // Four lines, plus the half-line gaps between the blocks they fall in.
-  expect(mixed.bottom - mixed.top).toBeGreaterThanOrEqual(4 * lineHeight);
-  expect(mixed.bottom - mixed.top).toBeLessThan(5 * lineHeight);
-  const table = await box(rendering("table-clamped"));
-  expect(table.bottom - table.top).toBeLessThanOrEqual(4 * lineHeight);
+  const clamped = await box(rendering("four-blocks-clamped"));
+  expect(clamped.bottom - clamped.top).toBe(4 * 24);
+  const overshoot = await rendering("four-blocks-clamped").evaluate((element) => {
+    const root = element.querySelector(".otg-markdown") as HTMLElement;
+    const last = root.lastElementChild?.getBoundingClientRect();
+    return (last?.bottom ?? Number.POSITIVE_INFINITY) - root.getBoundingClientRect().bottom;
+  });
+  expect(overshoot).toBeLessThanOrEqual(0);
+});
+
+test("a clamp holds four lines whatever the blocks, under a unitless line height", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const rich = await box(rendering("rich-clamped"));
+  expect(rich.bottom - rich.top).toBe(4 * 24);
 });
 
 test("the same words bold and regular differ, in a font with no bold face", async () => {
@@ -299,14 +357,6 @@ test("untrusted markdown runs no script and fetches no image", async () => {
   expect(await view.getByRole("link", { name: "badge" }).getAttribute("href")).toBe(
     "https://example.org/linked",
   );
-});
-
-test("a clamped table keeps a space between its cells", async () => {
-  const words = await rendering("table-clamped").evaluate((element) => {
-    const cell = element.querySelector("th");
-    return cell ? getComputedStyle(cell, "::after").content : "";
-  });
-  expect(words).toBe('" "');
 });
 
 test("the custom properties theme the card and an unset one falls back to its default", async () => {

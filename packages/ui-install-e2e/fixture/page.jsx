@@ -19,6 +19,27 @@ const SHORT_PARAGRAPH = "Two short sentences. They fit well inside four lines.";
 
 const SHORT_BLOCKS = "One short paragraph.\n\nAnother after it.";
 
+const SHORT_TABLE = "| Region | State |\n| --- | --- |\n| us-east | done |";
+
+/** A paragraph of exactly this many lines, whatever the width. */
+const HARD_LINES = (count) =>
+  Array.from({ length: count }, (_, line) => `Line ${line + 1}`).join("  \n");
+
+const RICH_BODY = `# A heading larger than the text
+
+A paragraph with \`inline code\`.
+
+---
+
+\`\`\`
+block code
+\`\`\`
+
+- A list item
+- Another list item
+
+A last paragraph.`;
+
 const MIXED_BODY = `Decide how the **rollout** continues, per [the plan](https://example.org/plan).
 
 - Keep the old reader for one more release
@@ -97,11 +118,21 @@ function Section({ name, width, children }) {
   );
 }
 
-function Rendering({ name, source, clamp }) {
+function Rendering({ name, source, clamp, style }) {
   return (
-    <div data-rendering={name}>
+    <div data-rendering={name} style={style}>
       <TaskMarkdown source={source} {...(clamp ? { clamp } : {})} />
     </div>
+  );
+}
+
+/** The same body clamped to four lines and whole, for the journey to compare. */
+function Pair({ name, source }) {
+  return (
+    <>
+      <Rendering name={`${name}-clamped`} source={source} clamp={4} />
+      <Rendering name={`${name}-unclamped`} source={source} />
+    </>
   );
 }
 
@@ -121,14 +152,18 @@ function App() {
         ))}
       </Section>
       <Section name="clamp" width={480}>
-        <Rendering name="long-clamped" source={LONG_PARAGRAPH} clamp={4} />
-        <Rendering name="long-unclamped" source={LONG_PARAGRAPH} />
-        <Rendering name="short-clamped" source={SHORT_PARAGRAPH} clamp={4} />
-        <Rendering name="short-unclamped" source={SHORT_PARAGRAPH} />
-        <Rendering name="blocks-clamped" source={SHORT_BLOCKS} clamp={4} />
-        <Rendering name="blocks-unclamped" source={SHORT_BLOCKS} />
-        <Rendering name="mixed-clamped" source={MIXED_BODY} clamp={4} />
-        <Rendering name="table-clamped" source={TABLE_BODY} clamp={4} />
+        <Pair name="long" source={LONG_PARAGRAPH} />
+        <Pair name="short" source={SHORT_PARAGRAPH} />
+        <Pair name="blocks" source={SHORT_BLOCKS} />
+        <Pair name="short-table" source={SHORT_TABLE} />
+        <Pair name="mixed" source={MIXED_BODY} />
+        <Pair name="table" source={TABLE_BODY} />
+        <Pair name="text-then-table" source={`A line before the table.\n\n${TABLE_BODY}`} />
+        <Pair name="long-then-table" source={`${LONG_PARAGRAPH}\n\n${TABLE_BODY}`} />
+        <Pair name="four-then-table" source={`${HARD_LINES(4)}\n\n${TABLE_BODY}`} />
+        <Pair name="three-then-table" source={`${HARD_LINES(3)}\n\n${TABLE_BODY}`} />
+        <Pair name="four-blocks" source={"One.\n\nTwo.\n\nThree.\n\nFour."} />
+        <Rendering name="rich-clamped" source={RICH_BODY} clamp={4} style={{ lineHeight: 1.5 }} />
         <Rendering name="bold" source="**The same words**" />
         <Rendering name="regular" source="The same words" />
         <Rendering

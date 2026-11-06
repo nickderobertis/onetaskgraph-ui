@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { linkableUrl, NEW_TAB_ATTRIBUTES } from "./safe-url";
+import { useClampFit } from "./use-clamp-fit";
 
 export type TaskMarkdownProps = {
   /** Untrusted GitHub-flavoured markdown. */
@@ -61,10 +62,16 @@ const REHYPE_PLUGINS = [rehypeFlattenLinkedImages];
  * image keeps its target only for http, https and mailto, and an image is never fetched.
  */
 export function TaskMarkdown({ source, clamp }: TaskMarkdownProps) {
-  const clamped = clamp !== undefined && Number.isInteger(clamp) && clamp > 0;
-  const style: CSSProperties | undefined = clamped ? { WebkitLineClamp: clamp } : undefined;
+  const lines = clamp !== undefined && Number.isInteger(clamp) && clamp > 0 ? clamp : undefined;
+  const ref = useClampFit(lines, source);
+  const style: CSSProperties | undefined =
+    lines === undefined ? undefined : { WebkitLineClamp: lines, maxHeight: `calc(${lines} * 1lh)` };
   return (
-    <div className={clamped ? "otg-markdown otg-markdown--clamped" : "otg-markdown"} style={style}>
+    <div
+      className={lines === undefined ? "otg-markdown" : "otg-markdown otg-markdown--clamped"}
+      ref={ref}
+      style={style}
+    >
       <Markdown
         components={COMPONENTS}
         rehypePlugins={REHYPE_PLUGINS}
