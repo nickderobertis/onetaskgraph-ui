@@ -25,7 +25,6 @@ if (
   );
   process.exit(2);
 }
-// llmlint: ignore[scripts_runtime_independent] The contract hashes tracked consumer files, so git ls-files supplies the checkout boundary using git provided on the GitHub-hosted runner, without authoring dependencies.
 const tracked = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
   .split('\0')
   .filter(Boolean);
