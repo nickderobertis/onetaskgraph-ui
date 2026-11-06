@@ -1,0 +1,9 @@
+# ci.yml is the create-repo skill's rendering, and its Nx cache sidecar is a background `uses:`
+# step torn down by a bare `cancel:` step. GitHub runs both; actionlint 1.7.12, the latest, parses
+# neither. Only those two messages are excluded, only for that file: the second is the one
+# actionlint gives for `- cancel: nx-cache`. The gap is the skill's or the linter's to close.
+paths:
+  .github/workflows/ci.yml:
+    ignore:
+      - 'unexpected key "background" for step to execute action'
+      - 'step must run script with "run" section or run action with "uses" section'

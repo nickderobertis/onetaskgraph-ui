@@ -23,8 +23,8 @@
       "options": {
         "commands": [
           "bunx biome check --error-on-warnings scripts .releaserc.json gh-secrets.json biome.json tsconfig.base.json package.json project.json",
-          "uvx --from shellcheck-py==0.11.0.1 shellcheck scripts/release-probe.sh",
-          "uvx --from actionlint-py==1.7.12.24 actionlint"
+          "shellcheck scripts/release-probe.sh",
+          "bunx github-actionlint"
         ],
         "parallel": false
       }
